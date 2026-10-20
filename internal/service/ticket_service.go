@@ -6,6 +6,7 @@ import (
 	"log"
 	"pos-backend/internal/domain"
 	"pos-backend/pkg/utils"
+	"time"
 )
 
 type ticketService struct {
@@ -120,4 +121,48 @@ func (s *ticketService) CreateTicket(ctx context.Context, branchId int64, servic
 	}
 
 	return ticket, nil
+}
+
+func (s *ticketService) GetRecentTickets(ctx context.Context, filter domain.TicketFilter) ([]*domain.TicketListItem, int64, error) {
+	if filter.BranchID <= 0 {
+		return nil, 0, errors.New("branch_id is required")
+	}
+
+	if filter.Limit <= 0 {
+		filter.Limit = 20
+	}
+	if filter.Limit > 100 {
+		filter.Limit = 100
+	}
+	if filter.Offset < 0 {
+		filter.Offset = 0
+	}
+
+	// Calculate 3-day window: start of 2 days ago (00:00:00) to end of today (23:59:59)
+	loc, err := time.LoadLocation("Asia/Jakarta")
+	if err != nil {
+		return nil, 0, err
+	}
+
+	now := time.Now().In(loc)
+
+	filter.StartDate = time.Date(
+		now.Year(),
+		now.Month(),
+		now.Day()-2,
+		0, 0, 0, 0,
+		loc,
+	)
+
+	filter.EndDate = time.Date(
+		now.Year(),
+		now.Month(),
+		now.Day()+1,
+		0, 0, 0, 0,
+		loc,
+	)
+
+	log.Printf("Fetching tickets for branch_id: %d, start_date: %s, end_date: %s, limit: %d, offset: %d", filter.BranchID, filter.StartDate, filter.EndDate, filter.Limit, filter.Offset)
+
+	return s.ticketRepo.GetRecentTickets(ctx, filter)
 }

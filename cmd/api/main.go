@@ -28,7 +28,7 @@ func main() {
 
 	dbDsn := os.Getenv("DB_DSN")
 	if dbDsn == "" {
-		dbDsn = "root@tcp(127.0.0.1:3306)/pos?parseTime=true"
+		dbDsn = "root@tcp(127.0.0.1:3306)/pos?parseTime=true&loc=Asia%2FJakarta"
 	}
 
 	port := os.Getenv("PORT")
@@ -54,6 +54,18 @@ func main() {
 	}
 
 	log.Print("Success connect to DB")
+
+	var sessionTZ string
+	var dbNow, dbUTC time.Time
+	if err := db.QueryRow("SELECT @@session.time_zone, NOW(), UTC_TIMESTAMP()").Scan(&sessionTZ, &dbNow, &dbUTC); err != nil {
+		log.Printf("Failed to read DB timezone: %v", err)
+	} else {
+		log.Printf("DB session time_zone=%s, NOW()=%s, UTC_TIMESTAMP()=%s, offset=%s",
+			sessionTZ, dbNow.Format(time.RFC3339), dbUTC.Format(time.RFC3339), dbNow.Sub(dbUTC))
+		if dbNow.Sub(dbUTC) != 7*time.Hour {
+			log.Printf("WARNING: DB timezone is not UTC+7 (Asia/Jakarta). Date filters on ticket.created_at may be shifted.")
+		}
+	}
 
 	userRepo := mysql.NewUserRepository(db)
 	branchRepo := mysql.NewBranchRepository(db)
@@ -82,6 +94,7 @@ func main() {
 	mux.HandleFunc("GET /api/v1/branches", middleware.RequireAuth(secretKey)(branchHandler.GeMyBranches))
 	mux.HandleFunc("GET /api/v1/preload/{id}", preloadHandler.GetPreloadData)
 	mux.HandleFunc("POST /api/v1/tickets", ticketHandler.CreateTicket)
+	mux.HandleFunc("GET /api/v1/tickets", middleware.RequireAuth(secretKey)(ticketHandler.GetTickets))
 
 	log.Printf("Server POS berjalan di port :%s...\n", port)
 	if err := http.ListenAndServe(":"+port, mux); err != nil {
