@@ -9,7 +9,6 @@
 
 ## 1. Environment Setup
 
-Copy `.env` (exists at root) and configure:
 
 ```dotenv
 PORT=8080
