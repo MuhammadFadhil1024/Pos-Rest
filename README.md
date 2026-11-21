@@ -25,9 +25,10 @@ The project uses Goose-style SQL migrations under `migrations/`. Run with the `m
 
 ```bash
 # Install migrate if needed (go install github.com/golang-migrate/migrate/v4/cmd/migrate@latest)
-migrate -database "root@tcp(127.0.0.1:3306)/pos?parseTime=true&loc=Asia%2FJakarta" -path migrations up
+# Note: the -database URL must start with the driver prefix "mysql://"
+migrate -database "mysql://root@tcp(127.0.0.1:3306)/pos?parseTime=true&loc=Asia%2FJakarta" -path migrations up
 # or down
-migrate -database "root@tcp(127.0.0.1:3306)/pos?parseTime=true&loc=Asia%2FJakarta" -path migrations down
+migrate -database "mysql://root@tcp(127.0.0.1:3306)/pos?parseTime=true&loc=Asia%2FJakarta" -path migrations down
 ```
 
 **Migration files** (up/down pairs) in `migrations/`:

@@ -16,7 +16,7 @@ import (
 // MockAuthService is a mock implementation of domain.AuthService for scenario testing.
 type MockAuthService struct {
 	LoginFunc    func(ctx context.Context, email, password string) (string, error)
-	RegisterFunc func(ctx context.Context, email, password, role string) (*domain.User, error)
+	RegisterFunc func(ctx context.Context, branchInputs []domain.BranchInput, userInputs []domain.UserInput) (*domain.RegistrationResult, error)
 }
 
 func (m *MockAuthService) Login(ctx context.Context, email, password string) (string, error) {
@@ -26,9 +26,9 @@ func (m *MockAuthService) Login(ctx context.Context, email, password string) (st
 	return "", errors.New("not implemented")
 }
 
-func (m *MockAuthService) Register(ctx context.Context, email, password, role string) (*domain.User, error) {
+func (m *MockAuthService) Register(ctx context.Context, branchInputs []domain.BranchInput, userInputs []domain.UserInput) (*domain.RegistrationResult, error) {
 	if m.RegisterFunc != nil {
-		return m.RegisterFunc(ctx, email, password, role)
+		return m.RegisterFunc(ctx, branchInputs, userInputs)
 	}
 	return nil, errors.New("not implemented")
 }

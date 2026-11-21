@@ -8,15 +8,15 @@ import (
 )
 
 type branchRepository struct {
-	db *sql.DB
+	db DB
 }
 
-func NewBranchRepository(db *sql.DB) domain.BranchRepository {
+func NewBranchRepository(db DB) domain.BranchRepository {
 	return &branchRepository{db: db}
 }
 
 func (r *branchRepository) GetByUserId(ctx context.Context, id int64) ([]*domain.Branch, error) {
-	query := `SELECT b.id as branch_id, b.name
+	query := `SELECT b.id as branch_id, b.name, b.slug
 		FROM branch b
 		JOIN mm_user_branch ub ON b.id = ub.branch_id
 		WHERE ub.user_id = ?
@@ -33,8 +33,8 @@ func (r *branchRepository) GetByUserId(ctx context.Context, id int64) ([]*domain
 	var branches []*domain.Branch
 	for rows.Next() {
 		var b domain.Branch
-		if err := rows.Scan(&b.ID, &b.Name); err != nil {
-			return  nil, err
+		if err := rows.Scan(&b.ID, &b.Name, &b.Slug); err != nil {
+			return nil, err
 		}
 		branches = append(branches, &b)
 	}
@@ -43,7 +43,7 @@ func (r *branchRepository) GetByUserId(ctx context.Context, id int64) ([]*domain
 }
 
 func (r *branchRepository) GetByBranchId(ctx context.Context, branchId int64) (*domain.Branch, error) {
-	query := `SELECT b.id, b.name
+	query := `SELECT b.id, b.name, b.slug
 		FROM branch b WHERE b.id = ?
 	`
 	branch := &domain.Branch{}
@@ -51,6 +51,7 @@ func (r *branchRepository) GetByBranchId(ctx context.Context, branchId int64) (*
 	err := r.db.QueryRowContext(ctx, query, branchId).Scan(
 		&branch.ID,
 		&branch.Name,
+		&branch.Slug,
 	)
 
 	if err != nil {
@@ -59,7 +60,28 @@ func (r *branchRepository) GetByBranchId(ctx context.Context, branchId int64) (*
 		}
 		return nil, err
 	}
-	
 
 	return branch, nil
+}
+
+func (r *branchRepository) CreateBranch(ctx context.Context, branch *domain.Branch) error {
+	query := `INSERT INTO branch (name, slug, company_name, address) VALUES (?, ?, ?, ?)`
+	res, err := r.db.ExecContext(ctx, query, branch.Name, branch.Slug, branch.CompanyName, branch.Address)
+	if err != nil {
+		return err
+	}
+
+	id, err := res.LastInsertId()
+	if err != nil {
+		return err
+	}
+
+	branch.ID = id
+	return r.db.QueryRowContext(ctx, "SELECT id, name, slug, company_name, address FROM branch WHERE id = ?", branch.ID).Scan(
+		&branch.ID,
+		&branch.Name,
+		&branch.Slug,
+		&branch.CompanyName,
+		&branch.Address,
+	)
 }

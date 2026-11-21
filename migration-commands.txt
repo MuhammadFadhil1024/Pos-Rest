@@ -1,0 +1,78 @@
+=====================================================================
+ MIGRATION COMMANDS - pos-backend
+=====================================================================
+Tool     : golang-migrate CLI
+Folder   : migrations/ (SQL up/down pairs)
+Database : root@tcp(127.0.0.1:3306)/pos (from .env DB_DSN)
+
+Install migrate CLI (if not installed):
+    go install github.com/golang-migrate/migrate/v4/cmd/migrate@latest
+
+IMPORTANT: the -database URL must start with the driver "mysql://",
+otherwise you get: "unknown driver root@tcp(127.0.0.1 (forgotten import?)".
+
+Full database URL (used as <DSN> below):
+    mysql://root@tcp(127.0.0.1:3306)/pos?parseTime=true&loc=Asia%2FJakarta
+
+=====================================================================
+ 1. MIGRATE UP (apply all pending migrations)
+=====================================================================
+migrate -database "mysql://root@tcp(127.0.0.1:3306)/pos?parseTime=true&loc=Asia%2FJakarta" -path migrations up
+
+=====================================================================
+ 2. MIGRATE DOWN (rollback)
+=====================================================================
+# Rollback the last migration (1 step):
+migrate -database "mysql://root@tcp(127.0.0.1:3306)/pos?parseTime=true&loc=Asia%2FJakarta" -path migrations down 1
+
+# Rollback N steps (e.g. 2 migrations):
+migrate -database "mysql://root@tcp(127.0.0.1:3306)/pos?parseTime=true&loc=Asia%2FJakarta" -path migrations down 2
+
+=====================================================================
+ 3. MIGRATE ONLY N STEPS UP (partial apply)
+=====================================================================
+# Apply only the next migration (e.g. only 000015 branch/company_name):
+migrate -database "mysql://root@tcp(127.0.0.1:3306)/pos?parseTime=true&loc=Asia%2FJakarta" -path migrations up 1
+
+# Apply the next 2 migrations (000015 branch + 000016 users/phone):
+migrate -database "mysql://root@tcp(127.0.0.1:3306)/pos?parseTime=true&loc=Asia%2FJakarta" -path migrations up 2
+
+=====================================================================
+ 4. MIGRATE TO A SPECIFIC VERSION
+=====================================================================
+# Jump to version 15 (branch.company_name) and stop there:
+migrate -database "mysql://root@tcp(127.0.0.1:3306)/pos?parseTime=true&loc=Asia%2FJakarta" -path migrations goto 15
+
+# Jump to version 16 (users.phone):
+migrate -database "mysql://root@tcp(127.0.0.1:3306)/pos?parseTime=true&loc=Asia%2FJakarta" -path migrations goto 16
+
+=====================================================================
+ 5. CHECK / FIX MIGRATION STATE
+=====================================================================
+# Show current migration version:
+migrate -database "mysql://root@tcp(127.0.0.1:3306)/pos?parseTime=true&loc=Asia%2FJakarta" -path migrations version
+
+# If the database is stuck "dirty", force the version back
+# to the last known good one (no migration is run):
+migrate -database "mysql://root@tcp(127.0.0.1:3306)/pos?parseTime=true&loc=Asia%2FJakarta" -path migrations force 14
+
+# DANGER: drop everything in the database:
+migrate -database "mysql://root@tcp(127.0.0.1:3306)/pos?parseTime=true&loc=Asia%2FJakarta" -path migrations drop -f
+
+=====================================================================
+ 6. CREATING A NEW MIGRATION (convention used in this repo)
+=====================================================================
+migrate create -ext sql -dir migrations -seq add_field_to_table
+
+# This generates:
+#   0000NN_add_field_to_table.up.sql
+#   0000NN_add_field_to_table.down.sql
+# Edit both files with the SQL (up = change, down = revert).
+
+=====================================================================
+ TIPS
+=====================================================================
+- Each new field/table = new migration file pair (up + down).
+- Never edit an already-applied migration file.
+- If you see "Dirty database version X", fix with `force` (section 5).
+- Always include the "mysql://" driver prefix in -database.
